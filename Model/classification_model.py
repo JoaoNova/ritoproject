@@ -1,17 +1,20 @@
 from keras.models import Sequential
 from keras.layers import Dense
+from keras.layers import Dropout
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import pandas as pd
 import numpy as np
 
-BRChallengerMatches = pd.read_csv("../Data/test_rito.csv")
+from Model.callbacks import EarlyStoppingAtMinLoss
+
+BRChallengerMatches = pd.read_csv("../Data/dados_historico.csv")
 BRChallengerMatches.head()
 
-# teamid 100 (Blue), 200 (Red)
-TargetVariable = ['Winner_Team']
-Predictors = ['Blue_Champ1', 'Blue_Champ2', 'Blue_Champ3', 'Blue_Champ4', 'Blue_Champ5',
-              'Red_Champ1', 'Red_Champ2', 'Red_Champ3', 'Red_Champ4', 'Red_Champ5']
+# Win = 0 (Blue), 1 (Red)
+TargetVariable = ['Win']
+Predictors = ['b1', 'b2', 'b3', 'b4', 'b5',
+              'r1', 'r2', 'r3', 'r4', 'r5']
 
 X = BRChallengerMatches[Predictors].values
 y = BRChallengerMatches[TargetVariable].values
@@ -45,7 +48,14 @@ classifier.add(Dense(units=10, input_dim=10, kernel_initializer='uniform', activ
 
 #Defining the SECOND hidden layer, here we have not defined input because it is
 # second layer and it will get input as the output of first hidden layer
-classifier.add(Dense(units=6, kernel_initializer='uniform', activation='relu'))
+classifier.add(Dense(units=64, kernel_initializer='uniform', activation='relu'))
+classifier.add(Dropout(0.3))
+classifier.add(Dense(units=64, kernel_initializer='uniform', activation='relu'))
+classifier.add(Dropout(0.3))
+classifier.add(Dense(units=64, kernel_initializer='uniform', activation='relu'))
+classifier.add(Dropout(0.3))
+classifier.add(Dense(units=10, kernel_initializer='uniform', activation='relu'))
+classifier.add(Dropout(0.3))
 
 # Defining the Output layer
 # sigmoid means sigmoid activation function
@@ -56,10 +66,12 @@ classifier.add(Dense(units=1, kernel_initializer='uniform', activation='sigmoid'
 # Optimizer== the algorithm of SGG to keep updating weights
 # loss== the loss function to measure the accuracy
 # metrics== the way we will compare the accuracy after each step of SGD
-classifier.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+classifier.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
 
 # fitting the Neural Network on the training data
-survivalANN_Model = classifier.fit(X_train,y_train, batch_size=10 , epochs=10, verbose=1)
+challengerMatches_ANN_Model = classifier.fit(X_train,y_train, batch_size=64, epochs=10000,
+                                             callbacks=EarlyStoppingAtMinLoss(patience=250),
+                                             verbose=1)
 
 # Test the already trained model vs the test data
 loss, accuracy = classifier.evaluate(x=X_test, y=y_test)
